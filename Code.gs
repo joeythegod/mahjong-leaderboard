@@ -20,11 +20,19 @@ function getSheet() {
 
 function doGet(e) {
   const action = (e.parameter.action || 'read');
-
   if (action === 'read') return getAllEntries();
-  if (action === 'add')  return addEntry(e.parameter);
-
   return jsonResponse({ error: 'Unknown action' });
+}
+
+// POST: { action: 'add', date: 'YYYY-MM-DD', circles: 8, players: [{name, score}] }
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    if (data.action === 'add') return addSession(data);
+    return jsonResponse({ error: 'Unknown action' });
+  } catch (err) {
+    return jsonResponse({ error: err.message });
+  }
 }
 
 // ── Read ────────────────────────────────────────────────────────────
@@ -46,17 +54,37 @@ function getAllEntries() {
   return jsonResponse(entries);
 }
 
-// ── Add entry ───────────────────────────────────────────────────────
+// ── Add session (wide format: one row per game session) ─────────────
 
-function addEntry(params) {
-  const { name, score, circles, date } = params;
-  if (!name || score === undefined || !circles || !date) {
-    return jsonResponse({ error: 'Missing fields' });
-  }
+function addSession(data) {
+  const { date, circles, players } = data;
+  if (!date || !players || !players.length) return jsonResponse({ error: 'Missing fields' });
+
   const sheet = getSheet();
-  const id = sheet.getLastRow(); // row 1 = headers, so first data row gets id=1
-  sheet.appendRow([id, name, Number(score), Number(circles), date]);
-  return jsonResponse({ ok: true, id, name, score: Number(score), circles: Number(circles), date });
+  const lastCol = sheet.getLastColumn();
+  const headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0]
+                        .map(h => String(h).trim());
+
+  // Convert YYYY-MM-DD → M/D to match sheet format
+  const [, month, day] = date.split('-');
+  const dateLabel = `${parseInt(month)}/${parseInt(day)}`;
+
+  // Build row: default all player columns to '-'
+  const row = new Array(headerRow.length).fill('-');
+  row[0] = dateLabel;
+  row[1] = Number(circles) || 1;
+
+  for (const { name, score } of players) {
+    const col = headerRow.findIndex(h => h === String(name).trim());
+    if (col >= 0) row[col] = Number(score);
+  }
+
+  // Zero out the sum column
+  const sumCol = headerRow.findIndex(h => h.toLowerCase() === 'sum');
+  if (sumCol >= 0) row[sumCol] = 0;
+
+  sheet.appendRow(row);
+  return jsonResponse({ ok: true });
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────

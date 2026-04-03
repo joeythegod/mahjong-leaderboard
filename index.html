@@ -836,21 +836,17 @@ async function fetchAll() {
   render();
 }
 
-async function addEntry(data) {
-  const params = new URLSearchParams({
-    action: 'add',
-    name: data.name,
-    score: data.score,
-    circles: data.circles,
-    date: data.date,
-    t: Date.now()
+async function submitSession(date, circles, players) {
+  if (SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+    throw new Error('Set SCRIPT_URL in index.html first — see Code.gs for setup instructions');
+  }
+  // POST with no explicit Content-Type so it's a "simple" CORS request (no preflight).
+  // Apps Script receives it in doPost before any redirect.
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify({ action: 'add', date, circles, players })
   });
-  const res = await fetch(`${SCRIPT_URL}?${params}`);
-  const result = await res.json();
-  if (result.error) throw new Error(result.error);
-  allEntries.push(result);
-  render();
-  toast('✓ Score added for ' + data.name);
 }
 
 
@@ -1029,19 +1025,20 @@ document.getElementById('add-form').addEventListener('submit', async e => {
   const errEl = document.getElementById('sum-error');
   errEl.style.display = 'none';
 
-  const entries = [];
+  const players = [];
+  let circles = 1;
   for (const row of rows) {
     const inputs = row.querySelectorAll('input');
     const name = inputs[0].value.trim();
     const score = Number(inputs[1].value);
-    const circles = Number(inputs[2].value);
-    if (!name || isNaN(score) || !circles) continue;
-    entries.push({ name, score, circles, date });
+    circles = Number(inputs[2].value) || circles;
+    if (!name || isNaN(score) || !inputs[2].value) continue;
+    players.push({ name, score });
   }
 
-  if (!entries.length) return;
+  if (!players.length) return;
 
-  const sum = entries.reduce((s, e) => s + e.score, 0);
+  const sum = players.reduce((s, p) => s + p.score, 0);
   if (sum !== 0) {
     errEl.textContent = `Scores must sum to 0. Current sum: ${sum > 0 ? '+' : ''}${sum}`;
     errEl.style.display = 'block';
@@ -1049,11 +1046,20 @@ document.getElementById('add-form').addEventListener('submit', async e => {
   }
 
   try {
-    await Promise.all(entries.map(addEntry));
+    // Optimistically add to local state immediately
+    let nextId = Math.max(0, ...allEntries.map(e => e.id)) + 1;
+    for (const { name, score } of players) {
+      allEntries.push({ id: nextId++, name, score, circles, date });
+    }
+    render();
     closeModal();
-    toast(`✓ Added ${entries.length} score${entries.length > 1 ? 's' : ''}`);
-  } catch {
-    toast('✗ Failed to save scores', 'err');
+    toast(`✓ Added ${players.length} score${players.length > 1 ? 's' : ''}`);
+
+    // Write to sheet in background, then re-fetch to confirm
+    await submitSession(date, circles, players);
+    setTimeout(fetchAll, 3000);
+  } catch (err) {
+    toast('✗ ' + (err.message || 'Failed to save scores'), 'err');
   }
 });
 
