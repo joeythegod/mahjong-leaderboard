@@ -817,7 +817,7 @@ function parseSheetCSV(csv) {
       if (!raw || raw === '-') continue;
       const score = parseInt(raw);
       if (isNaN(score)) continue;
-      entries.push({ id: id++, name, score, circles, date });
+      entries.push({ id: id++, name, score, circles, date, sessionId: i });
     }
   }
 
@@ -880,19 +880,25 @@ function render() {
   const playerMap = {};
   players.forEach((p, i) => { playerMap[p.name] = { ...p, rank: i + 1 }; });
 
-  // Dates sorted
-  const dates = [...new Set(allEntries.map(e => e.date))].sort();
-
   // Season label (most recent year)
   const years = allEntries.map(e => e.date ? e.date.slice(0, 4) : '').filter(Boolean);
   const season = years.length ? Math.max(...years.map(Number)) : new Date().getFullYear();
 
-  // Build lookup: date → name → entries[]
+  // Build sessions: one entry per unique sheet row (sessionId), sorted by date
+  const sessionMap = {};
+  for (const e of allEntries) {
+    if (!sessionMap[e.sessionId]) sessionMap[e.sessionId] = { date: e.date, sessionId: e.sessionId };
+  }
+  const sessions = Object.values(sessionMap).sort((a, b) =>
+    a.date.localeCompare(b.date) || a.sessionId - b.sessionId
+  );
+
+  // Build lookup: sessionId → name → entries[]
   const lookup = {};
   for (const e of allEntries) {
-    if (!lookup[e.date]) lookup[e.date] = {};
-    if (!lookup[e.date][e.name]) lookup[e.date][e.name] = [];
-    lookup[e.date][e.name].push(e);
+    if (!lookup[e.sessionId]) lookup[e.sessionId] = {};
+    if (!lookup[e.sessionId][e.name]) lookup[e.sessionId][e.name] = [];
+    lookup[e.sessionId][e.name].push(e);
   }
 
   // ── THEAD ──────────────────────────────────────────────────────
@@ -982,26 +988,23 @@ function render() {
     ${names.map(() => '<td></td>').join('')}
   </tr>`;
 
-  // Game rows
-  for (const date of dates) {
+  // Game rows — one row per session (never merged by date)
+  for (const { date, sessionId } of sessions) {
     html += `<tr class="row-game">
       <td class="date-cell sticky">${fmtDate(date)}</td>
       ${names.map(n => {
-        const es = (lookup[date] && lookup[date][n]) || [];
+        const es = (lookup[sessionId] && lookup[sessionId][n]) || [];
         if (!es.length) return '<td class="game-score-cell"></td>';
         const inner = es.map(e => {
           const sc = scoreClass(e.score);
           return `<span class="score-box ${sc}">${fmtScore(e.score)}</span>`;
         }).join('');
-        const hasMulti = es.length > 1;
-        return `<td class="game-score-cell">
-          <div class="${hasMulti ? 'score-stack' : ''}">${inner}</div>
-        </td>`;
+        return `<td class="game-score-cell"><div>${inner}</div></td>`;
       }).join('')}
     </tr>`;
   }
 
-  if (!dates.length) {
+  if (!sessions.length) {
     html += `<tr class="row-game"><td class="date-cell sticky" colspan="${names.length + 1}" style="text-align:center;color:#666;padding:20px">
       No game data yet. Add your first score!
     </td></tr>`;
