@@ -628,7 +628,7 @@ const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?for
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?gid=${SHEET_GID}`;
 
 // For writing new scores (Apps Script web app URL — set up separately)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyvPcObsuPwMy8xAE3ZGK1yUihrytuXBVANMwUsTij8Hr5Xh-X-stxu7uJugEZVKChr/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxReUl2d6HGmqTNNBC8GdXAPpt0O9oP_LCPSDoCBHSDRwH_fnG2bTw_8F41ml-2TwgW/exec';
 
 let allEntries = [];
 
@@ -840,13 +840,16 @@ async function submitSession(date, circles, players) {
   if (SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
     throw new Error('Set SCRIPT_URL in index.html first — see Code.gs for setup instructions');
   }
-  // POST with no explicit Content-Type so it's a "simple" CORS request (no preflight).
-  // Apps Script receives it in doPost before any redirect.
-  await fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify({ action: 'add', date, circles, players })
+  // Use GET with URL params — avoids the POST redirect body-stripping issue with Apps Script.
+  const params = new URLSearchParams({
+    action: 'add',
+    date,
+    circles,
+    players: JSON.stringify(players)
   });
+  const res = await fetch(`${SCRIPT_URL}?${params}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
 }
 
 
