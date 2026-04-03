@@ -515,6 +515,38 @@
     .btn-sheet:hover { border-color: #888; color: #fff; }
 
 
+    /* ── Name autocomplete dropdown ────────────────────────────── */
+    .name-wrapper { position: relative; width: 100%; }
+
+    .name-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1.5px solid #c8973a;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      max-height: 160px;
+      overflow-y: auto;
+      z-index: 200;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .name-dropdown.open { display: block; }
+
+    .name-option {
+      padding: 7px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #111;
+    }
+    .name-option:hover, .name-option.active {
+      background: #fff3e0;
+      color: #b8760a;
+      font-weight: 600;
+    }
+
     /* ── Scroll indicator ──────────────────────────────────────── */
     .scroll-hint {
       text-align: center;
@@ -610,13 +642,89 @@ function addPlayerRow(name = '', score = '', circles = '') {
   const tr = document.createElement('tr');
   tr.id = `prow-${id}`;
   tr.innerHTML = `
-    <td><input type="text" placeholder="e.g. Alice" value="${name}" maxlength="20" required /></td>
+    <td class="name-cell"></td>
     <td><input type="number" placeholder="e.g. 150" value="${score}" required /></td>
     <td><input type="number" placeholder="e.g. 2" value="${circles}" min="1" max="20" required /></td>
     <td><button type="button" class="btn-remove-row" onclick="removePlayerRow('prow-${id}')">×</button></td>
   `;
   tbody.appendChild(tr);
-  tr.querySelector('input').focus();
+
+  // Build name input with autocomplete
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'e.g. Joey';
+  nameInput.value = name;
+  nameInput.maxLength = 20;
+  nameInput.required = true;
+  attachNameAutocomplete(nameInput, tr.querySelector('.name-cell'));
+  nameInput.focus();
+}
+
+function attachNameAutocomplete(input, td) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'name-wrapper';
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'name-dropdown';
+
+  wrapper.appendChild(input);
+  wrapper.appendChild(dropdown);
+  td.appendChild(wrapper);
+
+  // Copy styles from the players-table input rule
+  input.style.width = '100%';
+
+  function getMatches(filter) {
+    const names = [...new Set(allEntries.map(e => e.name))].sort();
+    if (!filter.trim()) return names;
+    return names.filter(n => n.toLowerCase().includes(filter.toLowerCase()));
+  }
+
+  function renderDropdown() {
+    const matches = getMatches(input.value);
+    if (!matches.length) { dropdown.classList.remove('open'); return; }
+    dropdown.innerHTML = '';
+    matches.forEach(n => {
+      const opt = document.createElement('div');
+      opt.className = 'name-option';
+      opt.textContent = n;
+      opt.addEventListener('mousedown', e => {
+        e.preventDefault(); // keep input focused
+        input.value = n;
+        dropdown.classList.remove('open');
+        const scoreInput = input.closest('tr').querySelector('td:nth-child(2) input');
+        if (scoreInput) scoreInput.focus();
+      });
+      dropdown.appendChild(opt);
+    });
+    dropdown.classList.add('open');
+  }
+
+  input.addEventListener('focus', renderDropdown);
+  input.addEventListener('input', renderDropdown);
+  input.addEventListener('blur', () => setTimeout(() => dropdown.classList.remove('open'), 150));
+
+  input.addEventListener('keydown', e => {
+    const opts = [...dropdown.querySelectorAll('.name-option')];
+    const activeIdx = opts.findIndex(o => o.classList.contains('active'));
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (activeIdx >= 0) opts[activeIdx].classList.remove('active');
+      const next = opts[Math.min(activeIdx + 1, opts.length - 1)];
+      if (next) { next.classList.add('active'); next.scrollIntoView({ block: 'nearest' }); }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (activeIdx >= 0) opts[activeIdx].classList.remove('active');
+      const prev = opts[Math.max(activeIdx - 1, 0)];
+      if (prev) { prev.classList.add('active'); prev.scrollIntoView({ block: 'nearest' }); }
+    } else if (e.key === 'Enter') {
+      const active = dropdown.querySelector('.name-option.active');
+      if (active) { e.preventDefault(); input.value = active.textContent; dropdown.classList.remove('open'); }
+    } else if (e.key === 'Escape') {
+      dropdown.classList.remove('open');
+    }
+  });
 }
 
 function removePlayerRow(id) {
