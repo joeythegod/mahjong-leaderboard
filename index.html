@@ -840,16 +840,13 @@ async function submitSession(date, circles, players) {
   if (SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
     throw new Error('Set SCRIPT_URL in index.html first — see Code.gs for setup instructions');
   }
-  // Use GET with URL params — avoids the POST redirect body-stripping issue with Apps Script.
   const params = new URLSearchParams({
     action: 'add',
     date,
     circles,
     players: JSON.stringify(players)
   });
-  const res = await fetch(`${SCRIPT_URL}?${params}`);
-  const json = await res.json();
-  if (json.error) throw new Error(json.error);
+  await fetch(`${SCRIPT_URL}?${params}`, { mode: 'no-cors' });
 }
 
 
