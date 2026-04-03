@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mahjong Leaderboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --white: #ffffff;
+      --off-white: #f8f8f8;
+      --light-gray: #efefef;
+      --border: #d0d0d0;
+      --border-dark: #444;
+      --text: #111;
+      --text-dim: #555;
+      --text-white: #fff;
+
+      /* Row tints */
+      --row-record-bg: #ffffff;
+      --row-win-bg: #e6f4ea;
+      --row-loss-bg: #fce8e8;
+      --row-total-bg: #fff3e0;
+      --row-avg-bg: #e8f0fe;
+      --row-standing-bg: #fff9c4;
+      --row-date-header-bg: #1a1a1a;
+      --row-game-bg: #ffffff;
+
+      /* Score colors */
+      --green: #1a7d3a;
+      --green-bg: #2ea84f;
+      --green-cell: #28a745;
+      --red: #c0392b;
+      --red-bg: #e74c3c;
+      --red-cell: #e03024;
+      --gold: #b8860b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #e8e8e8;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ───────────────────────────────────────────────── */
+    .topbar {
+      background: #1a1a2e;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #c8973a;
+    }
+
+    .topbar-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar-title span { color: #c8973a; }
+
+    .btn-add {
+      background: #c8973a;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 18px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-add:hover { background: #e8b45a; }
+
+    /* ── Add form modal ────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 28px 32px;
+      width: 560px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      color: #000;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .modal h2 {
+      font-size: 18px;
+      font-weight: 800;
+      color: #000;
+    }
+
+
+    .modal-date-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .modal-date-row label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #000;
+      white-space: nowrap;
+    }
+
+    .modal-date-row input[type="date"] {
+      border: 1.5px solid #ccc;
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #000;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .modal-date-row input[type="date"]:focus { border-color: #c8973a; }
+
+    /* Player rows table inside modal */
+    .players-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+
+    .players-table thead th {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #000;
+      padding: 0 6px 8px 6px;
+      text-align: left;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .players-table thead th:last-child { width: 36px; }
+
+    .players-table tbody td {
+      padding: 5px 4px;
+      vertical-align: middle;
+    }
+
+    .players-table input {
+      width: 100%;
+      border: 1.5px solid #ddd;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      color: #000;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .players-table input:focus { border-color: #c8973a; }
+    .players-table input::placeholder { color: #aaa; }
+
+    .btn-remove-row {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .btn-remove-row:hover { color: #e03024; }
+
+    .btn-add-player {
+      background: #fff;
+      border: 1.5px dashed #ccc;
+      border-radius: 7px;
+      padding: 7px 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+      margin-bottom: 16px;
+    }
+    .btn-add-player:hover { border-color: #c8973a; color: #c8973a; }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    .btn-cancel {
+      background: #f0f0f0;
+      color: #333;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 20px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-submit {
+      background: #1a7d3a;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 24px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-submit:hover { background: #157230; }
+
+    /* ── Main table container ──────────────────────────────────── */
+    .page-wrap {
+      padding: 16px;
+    }
+
+    .table-outer {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      table-layout: fixed;
+    }
+
+    /* ── Column widths ─────────────────────────────────────────── */
+    .col-label { width: 90px; }
+    .col-player { width: 88px; }
+
+    /* ── Sticky label column ───────────────────────────────────── */
+    .sticky {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+    }
+
+    /* ── Player header row ─────────────────────────────────────── */
+    thead tr th {
+      border: 1px solid var(--border);
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .season-cell {
+      background: #ffffff;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    .season-label {
+      font-size: 13px;
+      font-weight: 900;
+      color: #e07000;
+      letter-spacing: -0.3px;
+    }
+
+    .player-header {
+      background: #ffffff;
+      padding: 7px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #222;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Summary rows ──────────────────────────────────────────── */
+    tbody tr td {
+      border: 1px solid var(--border);
+      text-align: center;
+      vertical-align: middle;
+      padding: 0;
+    }
+
+    .row-label-cell {
+      text-align: left;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      border-right: 2px solid var(--border);
+    }
+
+    /* RECORD row */
+    tr.row-record { background: var(--row-record-bg); }
+    tr.row-record .row-label-cell { color: #333; background: var(--row-record-bg); }
+    .record-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 4px 2px;
+    }
+    .rec-w {
+      background: var(--green-cell);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+    .rec-l {
+      background: var(--red-cell);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    /* WIN row */
+    tr.row-win { background: var(--row-win-bg); }
+    tr.row-win .row-label-cell { color: var(--green); background: var(--row-win-bg); }
+
+    /* LOSS row */
+    tr.row-loss { background: var(--row-loss-bg); }
+    tr.row-loss .row-label-cell { color: var(--red); background: var(--row-loss-bg); }
+
+    /* TOTAL row */
+    tr.row-total { background: var(--row-total-bg); }
+    tr.row-total .row-label-cell { color: #c05000; background: var(--row-total-bg); }
+
+    /* AVERAGE row */
+    tr.row-avg { background: var(--row-avg-bg); }
+    tr.row-avg .row-label-cell { color: #1a4fc4; background: var(--row-avg-bg); }
+
+    /* CIRCLES row */
+    tr.row-circles { background: #f3f0ff; }
+    tr.row-circles .row-label-cell { color: #6b21a8; background: #f3f0ff; }
+
+    /* STANDING row */
+    tr.row-standing { background: var(--row-standing-bg); }
+    tr.row-standing .row-label-cell {
+      color: var(--gold);
+      background: var(--row-standing-bg);
+      font-size: 10px;
+    }
+    tr.row-standing td {
+      border-color: #e0d060;
+    }
+    .standing-num {
+      font-size: 14px;
+      font-weight: 900;
+      color: #222;
+    }
+
+    /* Generic score cell (for summary rows) */
+    .sum-cell {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 3px;
+    }
+    .sum-cell.pos { color: var(--green); }
+    .sum-cell.neg { color: var(--red); }
+    .sum-cell.zero { color: #888; }
+
+    /* ── DATE divider header ────────────────────────────────────── */
+    tr.row-date-header td {
+      background: #1a1a1a;
+      border-color: #333;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #aaa;
+    }
+    tr.row-date-header .row-label-cell {
+      background: #1a1a1a;
+      color: #aaa;
+      border-right-color: #444;
+    }
+
+    /* ── Game rows (black section) ─────────────────────────────── */
+    tr.row-game {
+      background: var(--row-game-bg);
+    }
+    tr.row-game:hover { background: #f5f5f5; }
+
+    tr.row-game td {
+      border-color: #e0e0e0;
+    }
+
+    .date-cell {
+      text-align: left;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #222;
+      background: #f8f8f8;
+      border-right: 2px solid #d0d0d0 !important;
+      white-space: nowrap;
+    }
+
+    .game-score-cell {
+      padding: 3px 2px;
+      height: 32px;
+      vertical-align: middle;
+    }
+
+    .score-box {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff;
+      min-width: 36px;
+      text-align: center;
+    }
+    .score-box.pos { background: var(--green-cell); }
+    .score-box.neg { background: var(--red-cell); }
+    .score-box.zero { background: #888; }
+
+    /* Multiple scores stacked in same cell */
+    .score-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Toast ─────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #222;
+      color: #fff;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      transform: translateY(60px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 2000;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.ok { border-left: 4px solid var(--green-cell); }
+    #toast.err { border-left: 4px solid var(--red-cell); }
+
+    .btn-sheet {
+      background: transparent;
+      color: #aaa;
+      border: 1.5px solid #444;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-sheet:hover { border-color: #888; color: #fff; }
+
+
+    /* ── Scroll indicator ──────────────────────────────────────── */
+    .scroll-hint {
+      text-align: center;
+      padding: 6px;
+      font-size: 11px;
+      color: #999;
+      background: #f8f8f8;
+      border-top: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-title">🀄 <span>Mahjong</span> Leaderboard</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a class="btn-sheet" id="btn-sheet" href="https://docs.google.com/spreadsheets/d/1DG8jlaxspR3j290yj-JwBHW6GZRUJjKsFxDfElcQ6zU/edit?gid=191491925" target="_blank" rel="noopener">📊 Sheet</a>
+    <button class="btn-add" onclick="openModal()">＋ Add Score</button>
+  </div>
+</div>
+
+<!-- Add Score Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>🀄 Add Scores</h2>
+    </div>
+    <form id="add-form">
+      <div class="modal-date-row">
+        <label>Date</label>
+        <input type="date" id="f-date" required />
+      </div>
+
+      <table class="players-table">
+        <thead>
+          <tr>
+            <th style="width:38%">Player Name</th>
+            <th style="width:28%">Score (+ or −)</th>
+            <th style="width:26%">Circles</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="player-rows"></tbody>
+      </table>
+
+      <button type="button" class="btn-add-player" onclick="addPlayerRow()">＋ Add Another Player</button>
+
+      <div id="sum-error" style="display:none;color:#c0392b;font-size:12px;font-weight:700;margin-bottom:10px;padding:8px 12px;background:#fce8e8;border-radius:6px;border:1px solid #f5c6c6;"></div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-submit">Save All Scores</button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- Main table -->
+<div class="page-wrap">
+  <div class="table-outer">
+    <div class="table-scroll">
+      <table id="main-table">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="scroll-hint" id="scroll-hint" style="display:none">← scroll to see all players →</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SHEET_ID  = '1DG8jlaxspR3j290yj-JwBHW6GZRUJjKsFxDfElcQ6zU';
+const SHEET_GID = '191491925';
+const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?gid=${SHEET_GID}`;
+
+// For writing new scores (Apps Script web app URL — set up separately)
+const SCRIPT_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+
+let allEntries = [];
+
+
+// ── Modal ─────────────────────────────────────────────────────────
+let rowCount = 0;
+
+function addPlayerRow(name = '', score = '', circles = '') {
+  const id = rowCount++;
+  const tbody = document.getElementById('player-rows');
+  const tr = document.createElement('tr');
+  tr.id = `prow-${id}`;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="e.g. Alice" value="${name}" maxlength="20" required /></td>
+    <td><input type="number" placeholder="e.g. 150" value="${score}" required /></td>
+    <td><input type="number" placeholder="e.g. 2" value="${circles}" min="1" max="20" required /></td>
+    <td><button type="button" class="btn-remove-row" onclick="removePlayerRow('prow-${id}')">×</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelector('input').focus();
+}
+
+function removePlayerRow(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    const tbody = document.getElementById('player-rows');
+    if (tbody.children.length > 1) el.remove();
+  }
+}
+
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  const tbody = document.getElementById('player-rows');
+  tbody.innerHTML = '';
+  rowCount = 0;
+  for (let i = 0; i < 4; i++) addPlayerRow();
+  document.getElementById('sum-error').style.display = 'none';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Toast ─────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function scoreClass(n) {
+  if (n > 0) return 'pos';
+  if (n < 0) return 'neg';
+  return 'zero';
+}
+
+function fmtScore(n, showPlus = true) {
+  if (n > 0) return showPlus ? '+' + n : String(n);
+  return String(n);
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${parseInt(m)}/${parseInt(day)}/${y}`;
+}
+
+// ── Sheet CSV parser ──────────────────────────────────────────────
+// Sheet format: row1 = [year, Cycle, Player1, Player2, ..., sum]
+//               rows 2-6 = summary rows (Point, Win, etc.) — skip
+//               row 7+ = game sessions: [M/D, cycles, score1, score2, ...]
+function parseSheetCSV(csv) {
+  const rows = csv.trim().split(/\r?\n/).map(r => r.split(','));
+  if (rows.length < 2) return [];
+
+  const headerRow = rows[0].map(h => h.trim());
+  const year = parseInt(headerRow[0]) || new Date().getFullYear();
+
+  // Collect player columns (skip index 0=year, 1=Cycle, last=sum)
+  const playerCols = [];
+  for (let i = 2; i < headerRow.length; i++) {
+    const name = headerRow[i].trim();
+    if (!name || name.toLowerCase() === 'sum') continue;
+    playerCols.push({ name, col: i });
+  }
+
+  const SKIP = new Set(['point', 'point per cycle', 'win', 'lose', 'win rate']);
+  const entries = [];
+  let id = 1;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const label = (row[0] || '').trim();
+    if (!label || SKIP.has(label.toLowerCase())) continue;
+
+    const m = label.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (!m) continue;
+
+    const date    = `${year}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+    const circles = parseInt(row[1]) || 1;
+
+    for (const { name, col } of playerCols) {
+      const raw = (row[col] || '').trim();
+      if (!raw || raw === '-') continue;
+      const score = parseInt(raw);
+      if (isNaN(score)) continue;
+      entries.push({ id: id++, name, score, circles, date });
+    }
+  }
+
+  return entries;
+}
+
+// ── Fetch ─────────────────────────────────────────────────────────
+async function fetchAll() {
+  try {
+    const res = await fetch(`${CSV_URL}&t=${Date.now()}`);
+    const csv = await res.text();
+    allEntries = parseSheetCSV(csv);
+  } catch (err) {
+    console.error('Failed to load sheet data:', err);
+  }
+  render();
+}
+
+async function addEntry(data) {
+  const params = new URLSearchParams({
+    action: 'add',
+    name: data.name,
+    score: data.score,
+    circles: data.circles,
+    date: data.date,
+    t: Date.now()
+  });
+  const res = await fetch(`${SCRIPT_URL}?${params}`);
+  const result = await res.json();
+  if (result.error) throw new Error(result.error);
+  allEntries.push(result);
+  render();
+  toast('✓ Score added for ' + data.name);
+}
+
+
+// ── Aggregate ─────────────────────────────────────────────────────
+function aggregate(entries) {
+  const map = {};
+  for (const e of entries) {
+    if (!map[e.name]) {
+      map[e.name] = { name: e.name, wins: 0, losses: 0, winTotal: 0, lossTotal: 0, games: 0, circles: 0 };
+    }
+    const p = map[e.name];
+    p.games++;
+    p.circles += e.circles;
+    if (e.score > 0) { p.wins++; p.winTotal += e.score; }
+    else if (e.score < 0) { p.losses++; p.lossTotal += e.score; }
+  }
+  return Object.values(map).map(p => ({
+    ...p,
+    total: p.winTotal + p.lossTotal,
+    avg: p.games ? Math.round((p.winTotal + p.lossTotal) / p.games) : 0,
+  }));
+}
+
+// ── Render ────────────────────────────────────────────────────────
+function render() {
+  const players = aggregate(allEntries);
+  // Sort by total score descending
+  players.sort((a, b) => b.total - a.total);
+
+  const names = players.map(p => p.name);
+  const playerMap = {};
+  players.forEach((p, i) => { playerMap[p.name] = { ...p, rank: i + 1 }; });
+
+  // Dates sorted
+  const dates = [...new Set(allEntries.map(e => e.date))].sort();
+
+  // Season label (most recent year)
+  const years = allEntries.map(e => e.date ? e.date.slice(0, 4) : '').filter(Boolean);
+  const season = years.length ? Math.max(...years.map(Number)) : new Date().getFullYear();
+
+  // Build lookup: date → name → entries[]
+  const lookup = {};
+  for (const e of allEntries) {
+    if (!lookup[e.date]) lookup[e.date] = {};
+    if (!lookup[e.date][e.name]) lookup[e.date][e.name] = [];
+    lookup[e.date][e.name].push(e);
+  }
+
+  // ── THEAD ──────────────────────────────────────────────────────
+  const thead = document.getElementById('thead');
+  thead.innerHTML = `<tr>
+    <th class="col-label sticky season-cell">
+      <div class="season-label">Season ${season}</div>
+    </th>
+    ${names.map(n => `<th class="col-player"><div class="player-header">${n}</div></th>`).join('')}
+  </tr>`;
+
+  // ── TBODY ──────────────────────────────────────────────────────
+  const tbody = document.getElementById('tbody');
+  let html = '';
+
+  // RECORD row
+  html += `<tr class="row-record">
+    <td class="col-label sticky row-label-cell">RECORD</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      return `<td><div class="record-cell">
+        <span class="rec-w">${p.wins}</span>
+        <span class="rec-l">${p.losses}</span>
+      </div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // WIN row
+  html += `<tr class="row-win">
+    <td class="col-label sticky row-label-cell">WIN</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      return `<td><div class="sum-cell pos">${p.winTotal > 0 ? '+' + p.winTotal : '—'}</div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // LOSS row
+  html += `<tr class="row-loss">
+    <td class="col-label sticky row-label-cell">LOSS</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      return `<td><div class="sum-cell neg">${p.lossTotal < 0 ? p.lossTotal : '—'}</div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // TOTAL row
+  html += `<tr class="row-total">
+    <td class="col-label sticky row-label-cell">TOTAL</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      const sc = scoreClass(p.total);
+      return `<td><div class="sum-cell ${sc}">${fmtScore(p.total)}</div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // AVERAGE row
+  html += `<tr class="row-avg">
+    <td class="col-label sticky row-label-cell">AVERAGE</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      const sc = scoreClass(p.avg);
+      return `<td><div class="sum-cell ${sc}">${fmtScore(p.avg)}</div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // CIRCLES row
+  html += `<tr class="row-circles">
+    <td class="col-label sticky row-label-cell">CIRCLES</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      return `<td><div class="sum-cell" style="color:#6b21a8">${p.circles || 0}</div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // STANDING row
+  html += `<tr class="row-standing">
+    <td class="col-label sticky row-label-cell">STANDING</td>
+    ${names.map(n => {
+      const p = playerMap[n];
+      return `<td><div class="standing-num">${p.rank}</div></td>`;
+    }).join('')}
+  </tr>`;
+
+  // DATE divider
+  html += `<tr class="row-date-header">
+    <td class="col-label sticky row-label-cell">DATE</td>
+    ${names.map(() => '<td></td>').join('')}
+  </tr>`;
+
+  // Game rows
+  for (const date of dates) {
+    html += `<tr class="row-game">
+      <td class="date-cell sticky">${fmtDate(date)}</td>
+      ${names.map(n => {
+        const es = (lookup[date] && lookup[date][n]) || [];
+        if (!es.length) return '<td class="game-score-cell"></td>';
+        const inner = es.map(e => {
+          const sc = scoreClass(e.score);
+          return `<span class="score-box ${sc}">${fmtScore(e.score)}</span>`;
+        }).join('');
+        const hasMulti = es.length > 1;
+        return `<td class="game-score-cell">
+          <div class="${hasMulti ? 'score-stack' : ''}">${inner}</div>
+        </td>`;
+      }).join('')}
+    </tr>`;
+  }
+
+  if (!dates.length) {
+    html += `<tr class="row-game"><td class="date-cell sticky" colspan="${names.length + 1}" style="text-align:center;color:#666;padding:20px">
+      No game data yet. Add your first score!
+    </td></tr>`;
+  }
+
+  tbody.innerHTML = html;
+
+  // Show scroll hint if many players
+  document.getElementById('scroll-hint').style.display = names.length > 8 ? '' : 'none';
+}
+
+// ── Form submit ───────────────────────────────────────────────────
+document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+
+document.getElementById('add-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const date = document.getElementById('f-date').value;
+  if (!date) return;
+
+  const rows = document.querySelectorAll('#player-rows tr');
+  const errEl = document.getElementById('sum-error');
+  errEl.style.display = 'none';
+
+  const entries = [];
+  for (const row of rows) {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0].value.trim();
+    const score = Number(inputs[1].value);
+    const circles = Number(inputs[2].value);
+    if (!name || isNaN(score) || !circles) continue;
+    entries.push({ name, score, circles, date });
+  }
+
+  if (!entries.length) return;
+
+  const sum = entries.reduce((s, e) => s + e.score, 0);
+  if (sum !== 0) {
+    errEl.textContent = `Scores must sum to 0. Current sum: ${sum > 0 ? '+' : ''}${sum}`;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    await Promise.all(entries.map(addEntry));
+    closeModal();
+    toast(`✓ Added ${entries.length} score${entries.length > 1 ? 's' : ''}`);
+  } catch {
+    toast('✗ Failed to save scores', 'err');
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+fetchAll();
+</script>
+</body>
+</html>
