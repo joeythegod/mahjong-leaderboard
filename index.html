@@ -556,6 +556,196 @@
       background: #f8f8f8;
       border-top: 1px solid #eee;
     }
+
+    /* ── Tab nav ───────────────────────────────────────────────── */
+    .tab-nav {
+      background: #111122;
+      display: flex;
+      padding: 0 16px;
+      border-bottom: 2px solid #c8973a;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      color: #888;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .tab-btn:hover { color: #ddd; }
+    .tab-btn.active { color: #c8973a; border-bottom-color: #c8973a; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Rules panel ────────────────────────────────────────────── */
+    .rules-wrap {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .rules-wrap { grid-template-columns: 1fr; }
+    }
+    .rules-section h2 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #c8973a;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #d0d0d0;
+    }
+    .rules-table {
+      border-collapse: collapse;
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      font-size: 12px;
+    }
+    .rules-table th {
+      background: #1a1a2e;
+      color: #c8973a;
+      font-weight: 700;
+      padding: 7px 10px;
+      text-align: left;
+      border: 1px solid #333;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .rules-table td {
+      padding: 6px 10px;
+      border: 1px solid #ebebeb;
+      vertical-align: top;
+    }
+    .rules-table tr:nth-child(even) td { background: #f8f8f8; }
+    .rules-table td:first-child { white-space: nowrap; font-weight: 600; color: #333; }
+    .rules-table td:nth-child(2) { font-weight: 500; }
+    .rules-table td:nth-child(3) {
+      font-weight: 700;
+      color: #1a7d3a;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .rules-table td:last-child { color: #666; font-size: 11px; }
+
+    /* ── Settlement dialog ─────────────────────────────────────── */
+    .settlement-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1100;
+      align-items: center;
+      justify-content: center;
+    }
+    .settlement-overlay.open { display: flex; }
+
+    .settlement-modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 32px 36px;
+      width: 420px;
+      max-width: 95vw;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+      color: #111;
+      text-align: center;
+    }
+
+    .settlement-check {
+      width: 56px;
+      height: 56px;
+      background: #1a7d3a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+      color: #fff;
+    }
+
+    .settlement-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .settlement-subtitle {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    .settlement-list {
+      text-align: left;
+      background: #f8f8f8;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settlement-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+
+    .settlement-payers {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .settlement-arrow {
+      color: #888;
+      font-size: 13px;
+    }
+
+    .settlement-amount {
+      font-size: 15px;
+      font-weight: 800;
+      color: #1a7d3a;
+      white-space: nowrap;
+    }
+
+    .settlement-even {
+      font-size: 13px;
+      color: #888;
+      font-style: italic;
+    }
+
+    .btn-settlement-ok {
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 32px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.15s;
+    }
+    .btn-settlement-ok:hover { background: #2a2a4e; }
   </style>
 </head>
 <body>
@@ -606,16 +796,122 @@
   </div>
 </div>
 
-<!-- Main table -->
-<div class="page-wrap">
-  <div class="table-outer">
-    <div class="table-scroll">
-      <table id="main-table">
-        <thead id="thead"></thead>
-        <tbody id="tbody"></tbody>
+<!-- Tab nav -->
+<div class="tab-nav">
+  <button class="tab-btn active" id="tab-leaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+  <button class="tab-btn" id="tab-rules" onclick="switchTab('rules')">Rules</button>
+</div>
+
+<!-- Leaderboard panel -->
+<div id="panel-leaderboard" class="tab-panel active">
+  <div class="page-wrap">
+    <div class="table-outer">
+      <div class="table-scroll">
+        <table id="main-table">
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="scroll-hint" id="scroll-hint" style="display:none">← scroll to see all players →</div>
+    </div>
+  </div>
+</div>
+
+<!-- Rules panel -->
+<div id="panel-rules" class="tab-panel">
+  <div class="rules-wrap">
+    <div class="rules-section">
+      <h2>Basic Scoring</h2>
+      <table class="rules-table">
+        <thead><tr><th>牌型</th><th>Name</th><th>Pts</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>自摸</td><td>Self pick</td><td>1</td><td></td></tr>
+          <tr><td>無花/花牌</td><td>No flower</td><td>1</td><td></td></tr>
+          <tr><td>一台花</td><td>Set of flower</td><td>10</td><td>You will need to win to collect</td></tr>
+          <tr><td>杠/花 上自摸</td><td>Self pick from gong/flower</td><td>2</td><td>Including hidden gong</td></tr>
+          <tr><td>搶杠</td><td>Steal gong</td><td>1</td><td></td></tr>
+          <tr><td>圈風牌</td><td>Winds</td><td>1 / 2</td><td>wind circle + 1</td></tr>
+          <tr><td>三元牌</td><td>Red / Green / White</td><td>2</td><td>中 發 白</td></tr>
+          <tr><td>無字花</td><td>No flower no letter</td><td>5</td><td>No letter pair</td></tr>
+          <tr><td>明杠</td><td>Gong</td><td>1</td><td></td></tr>
+          <tr><td>暗杠</td><td>Hidden Gong</td><td>2</td><td></td></tr>
+          <tr><td>獨聽</td><td>Waiting on Single Tile</td><td>2</td><td>middle / side tiles / single tile wait</td></tr>
+          <tr><td>聽牌</td><td>Waiting</td><td>5</td><td>Put 2 points in the middle. Winner take it</td></tr>
+          <tr><td>聽現牌</td><td>Reveal Waiting</td><td>5</td><td>Put 5 points in the middle, Winner take it. Only reveal waiting formation</td></tr>
+          <tr><td>門清停牌</td><td>Waiting door clean</td><td>10</td><td></td></tr>
+          <tr><td>一發</td><td>Head Shot</td><td>5</td><td>Win within 1 cycle after waiting, no eat/pong/gong taken place. Can be self pick</td></tr>
+          <tr><td>門清</td><td>All hidden</td><td>3</td><td></td></tr>
+          <tr><td>門清自摸</td><td>All hidden self pick</td><td>5</td><td>All hidden waiting self pick will be 15 total</td></tr>
+          <tr><td>平胡</td><td>Ping-hu, all straights</td><td>5</td><td>All straight, can have pair letter / flower. no letter/no flower can be counted in this</td></tr>
+          <tr><td>断夭</td><td>No 1 9</td><td>5</td><td>The winning hand contains no 1 or 9 or letters</td></tr>
+          <tr><td>缺一門</td><td>2 colors</td><td>5</td><td>Missing 1 set and no letters</td></tr>
+          <tr><td>五門齊</td><td>5 sets</td><td>5 / 10</td><td>10 points only if all sets has 3+ tiles</td></tr>
+          <tr><td>青龍</td><td>Pure Dragon</td><td>10</td><td></td></tr>
+          <tr><td>暗青龍</td><td>Hidden Pure Dragon</td><td>15</td><td>If winning tile is part of the dragon, only self-pick counts</td></tr>
+          <tr><td>三色龍</td><td>3 Color Dragon</td><td>5</td><td></td></tr>
+          <tr><td>暗三色龍</td><td>Hidden 3 Color Dragon</td><td>10</td><td>If winning tile is part of the dragon, only self-pick counts</td></tr>
+          <tr><td>两/三/四/五 暗刻</td><td>2/3/4/5 Hidden pongs</td><td>5/15/30/80</td><td>Can be self pick. 5 hidden — pong pong counted</td></tr>
+          <tr><td>两/三/四/五 杠子</td><td>2/3/4/5 Gongs</td><td>5/15/30/80</td><td>Do not recount open gong, each hidden gong get +1 point</td></tr>
+          <tr><td>老少碰</td><td>111 + 999</td><td>5</td><td>Must be same set</td></tr>
+          <tr><td>连刻</td><td>2-5 Consecutive pongs</td><td>5/15/30/80</td><td>E.g. 222 sticks and 333 sticks, can be hidden or shown</td></tr>
+          <tr><td>半三色同刻</td><td>2 pongs of same number + pair</td><td>15</td><td>E.g. 555 sticks, 555 circles, + 55 thousands</td></tr>
+          <tr><td>三色同刻</td><td>3 pongs of same number</td><td>30</td><td></td></tr>
+          <tr><td>二、三、四同順</td><td>2/3/4 exact same straights</td><td>3/15/40</td><td>Must be from the same set, can count with 4 and 5 sisters</td></tr>
+          <tr><td>三色同順 、三姐妹</td><td>3 sisters</td><td>10</td><td>3 sisters must be different sets</td></tr>
+          <tr><td>四姊妹、五姐妹</td><td>4 / 5 sisters</td><td>10 / 30</td><td>4/5 sisters can recount 3 sisters if have one. Also count same straights</td></tr>
+          <tr><td>四歸一二四</td><td>4 tiles different sets</td><td>5/15/30</td><td>E.g. 123+222 sticks; 123+234+22 sticks; 123+234+345+123 (all contain 3)</td></tr>
+        </tbody>
       </table>
     </div>
-    <div class="scroll-hint" id="scroll-hint" style="display:none">← scroll to see all players →</div>
+    <div class="rules-section">
+      <h2>Special Hands</h2>
+      <table class="rules-table">
+        <thead><tr><th>牌型</th><th>Name</th><th>Pts</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>混全带夭</td><td>Mix 1 9 (with straight)</td><td>20</td><td>Each set including the pair all contain 1 or 9 or letters</td></tr>
+          <tr><td>全带夭</td><td>All with 1 9</td><td>40</td><td>Each set all contain 1 or 9, no letters</td></tr>
+          <tr><td>混夭</td><td>Mix 1 9</td><td>60</td><td>Hand only consists of 1, 9 and letters (always pong pong hu + 30)</td></tr>
+          <tr><td>清夭</td><td>Pure 1 9</td><td>100</td><td>Hand only consists of 1 and 9, no letters (always pong pong hu + 30)</td></tr>
+          <tr><td>全大</td><td>All Big</td><td>30</td><td>No letter, all numbers 5 or over</td></tr>
+          <tr><td>全小</td><td>All Small</td><td>30</td><td>No letter, all numbers 5 or under</td></tr>
+          <tr><td>碰碰胡</td><td>All pongs</td><td>30</td><td></td></tr>
+          <tr><td>混/清 一色</td><td>Mix / Pure one color</td><td>30/80</td><td></td></tr>
+          <tr><td>小/大三元</td><td>Small/Big 3 dragons</td><td>20/40</td><td></td></tr>
+          <tr><td>小/大三風</td><td>Small/Big 3 winds</td><td>15/30</td><td>E.g. East East East West West West South South (3-3-2). Big: three sets of wind</td></tr>
+          <tr><td>小/大四喜</td><td>Small/Big 4 winds</td><td>80/100</td><td></td></tr>
+          <tr><td>滿庭芳</td><td>All contain same number</td><td>80</td><td>Every set and pair contain the same number. E.g. 123 sticks, 234 circle, 333 thousands, 123 circle, 333 sticks, 33 circle</td></tr>
+          <tr><td>字一色</td><td>All letters</td><td>100</td><td></td></tr>
+          <tr><td>天聽</td><td>Heaven waiting</td><td>30</td><td>Waiting before 1st tile is tossed</td></tr>
+          <tr><td>米奇</td><td>Waiting before 8 tiles</td><td>15</td><td>Announce waiting when less than 8 tiles in play (no pong/eat/gong). Can + bonus from within 10 or within 7</td></tr>
+          <tr><td>人胡</td><td>People Win</td><td>80</td><td>Non-dealer win from dealer's first tile</td></tr>
+          <tr><td>地胡</td><td>Earth Win</td><td>90</td><td>Non-dealer self pick first tile. No pong / eat / gong occurred</td></tr>
+          <tr><td>天胡</td><td>Heaven Win</td><td>100</td><td>Dealer win before throwing a tile</td></tr>
+          <tr><td>半求人</td><td>Half beg all card</td><td>8</td><td>Waiting on 1, win off self pick (no hidden gong)</td></tr>
+          <tr><td>全求人</td><td>Beg all card</td><td>15</td><td>Waiting on 1, win off someone else (no hidden gong)</td></tr>
+          <tr><td>海底捞月</td><td>Self pick last tile</td><td>10</td><td></td></tr>
+          <tr><td>河裡摸魚</td><td>Win off last tile</td><td>10</td><td>Win off the last tile thrown</td></tr>
+          <tr><td>绝張</td><td>Absolutely last tile</td><td>5</td><td>All other tiles are shown or in the winner's hand</td></tr>
+          <tr><td>一變二十</td><td>1 point hand</td><td>20</td><td></td></tr>
+          <tr><td>八對半</td><td>8 and half pairs</td><td>40</td><td>Must be all hidden</td></tr>
+          <tr><td>十六不搭</td><td>16 no connect</td><td>40+10</td><td>+10 if all the numbers match</td></tr>
+          <tr><td>十三夭</td><td>13 outcasts</td><td>100</td><td>Must be all hidden, include a set of triple or straight</td></tr>
+          <tr><td>七搶一</td><td>7 flowers vs 1</td><td>20</td><td>Game ends immediately, cannot keep going</td></tr>
+          <tr><td>八仙過海</td><td>8 flowers</td><td>30</td><td>Game ends immediately, or keep going. If you win, +30</td></tr>
+          <tr><td>詐胡</td><td>Fake win</td><td>−5</td><td>Game continues with the initiator on Draw-go until game end</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Settlement Dialog -->
+<div class="settlement-overlay" id="settlement-overlay">
+  <div class="settlement-modal">
+    <div class="settlement-check">✓</div>
+    <div class="settlement-title">Successfully Registered!</div>
+    <div class="settlement-subtitle">$1 per 2 points · who pays whom</div>
+    <div class="settlement-list" id="settlement-list"></div>
+    <button class="btn-settlement-ok" onclick="closeSettlement()">Got it</button>
   </div>
 </div>
 
@@ -1016,6 +1312,58 @@ function render() {
   document.getElementById('scroll-hint').style.display = names.length > 8 ? '' : 'none';
 }
 
+// ── Settlement ────────────────────────────────────────────────────
+function computeSettlement(players) {
+  // $1 per 2 points — clone so we can mutate
+  const debtors   = players.filter(p => p.score < 0)
+    .map(p => ({ name: p.name, amount: -p.score / 2 }))
+    .sort((a, b) => b.amount - a.amount);
+  const creditors = players.filter(p => p.score > 0)
+    .map(p => ({ name: p.name, amount: p.score / 2 }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const txns = [];
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(debtors[i].amount, creditors[j].amount);
+    if (pay > 0.005) {
+      txns.push({ from: debtors[i].name, to: creditors[j].name, amount: pay });
+    }
+    debtors[i].amount  -= pay;
+    creditors[j].amount -= pay;
+    if (debtors[i].amount  < 0.005) i++;
+    if (creditors[j].amount < 0.005) j++;
+  }
+  return txns;
+}
+
+function openSettlement(players) {
+  const txns = computeSettlement(players);
+  const list = document.getElementById('settlement-list');
+
+  if (!txns.length) {
+    list.innerHTML = `<div class="settlement-even">Everyone is even — no payments needed!</div>`;
+  } else {
+    list.innerHTML = txns.map(t => {
+      const dollars = t.amount % 1 === 0 ? `$${t.amount}` : `$${t.amount.toFixed(2)}`;
+      return `<div class="settlement-row">
+        <div class="settlement-payers">
+          <span>${t.from}</span>
+          <span class="settlement-arrow">→</span>
+          <span>${t.to}</span>
+        </div>
+        <div class="settlement-amount">${dollars}</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('settlement-overlay').classList.add('open');
+}
+
+function closeSettlement() {
+  document.getElementById('settlement-overlay').classList.remove('open');
+}
+
 // ── Form submit ───────────────────────────────────────────────────
 document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
 
@@ -1056,7 +1404,7 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     }
     render();
     closeModal();
-    toast(`✓ Added ${players.length} score${players.length > 1 ? 's' : ''}`);
+    openSettlement(players);
 
     // Write to sheet in background, then re-fetch to confirm
     await submitSession(date, circles, players);
@@ -1065,6 +1413,14 @@ document.getElementById('add-form').addEventListener('submit', async e => {
     toast('✗ ' + (err.message || 'Failed to save scores'), 'err');
   }
 });
+
+// ── Tabs ──────────────────────────────────────────────────────────
+function switchTab(name) {
+  ['leaderboard', 'rules'].forEach(t => {
+    document.getElementById(`panel-${t}`).classList.toggle('active', t === name);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+  });
+}
 
 // ── Init ──────────────────────────────────────────────────────────
 fetchAll();
