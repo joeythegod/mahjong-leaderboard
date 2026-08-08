@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mahjong Leaderboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root {
       --white: #ffffff;
@@ -583,6 +584,51 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    /* ── Season tab bar ─────────────────────────────────────────────── */
+    #season-tab-bar {
+      background: #1a1a2e;
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      gap: 6px;
+      border-bottom: 1px solid #2a2a4e;
+    }
+    .season-tab-bar-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-right: 4px;
+    }
+    .season-tab-pill {
+      background: #2a2a4e;
+      color: #888;
+      border: none;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .season-tab-pill:hover { background: #3a3a6e; color: #ddd; }
+    .season-tab-pill.active { background: #c8973a; color: #000; }
+
+    /* ── Trends panel ───────────────────────────────────────────── */
+    .trends-wrap {
+      padding: 16px;
+    }
+    .trends-chart-box {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 24px 24px 16px;
+      height: 500px;
+      position: relative;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+
     /* ── Rules panel ────────────────────────────────────────────── */
     .rules-wrap {
       padding: 16px;
@@ -799,11 +845,13 @@
 <!-- Tab nav -->
 <div class="tab-nav">
   <button class="tab-btn active" id="tab-leaderboard" onclick="switchTab('leaderboard')">Leaderboard</button>
+  <button class="tab-btn" id="tab-trends" onclick="switchTab('trends')">Trends</button>
   <button class="tab-btn" id="tab-rules" onclick="switchTab('rules')">Rules</button>
 </div>
 
 <!-- Leaderboard panel -->
 <div id="panel-leaderboard" class="tab-panel active">
+  <div id="season-tab-bar"></div>
   <div class="page-wrap">
     <div class="table-outer">
       <div class="table-scroll">
@@ -813,6 +861,15 @@
         </table>
       </div>
       <div class="scroll-hint" id="scroll-hint" style="display:none">← scroll to see all players →</div>
+    </div>
+  </div>
+</div>
+
+<!-- Trends panel -->
+<div id="panel-trends" class="tab-panel">
+  <div class="trends-wrap">
+    <div class="trends-chart-box">
+      <canvas id="trends-canvas"></canvas>
     </div>
   </div>
 </div>
@@ -927,7 +984,41 @@ const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?gid=$
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxReUl2d6HGmqTNNBC8GdXAPpt0O9oP_LCPSDoCBHSDRwH_fnG2bTw_8F41ml-2TwgW/exec';
 
 let allEntries = [];
+let selectedSeason = 'all';
+let defaultSeasonSet = false;
 
+// ── Season helpers ────────────────────────────────────────────────
+const QUARTER_LABELS = { Q1: 'Jan–Mar', Q2: 'Apr–Jun', Q3: 'Jul–Sep', Q4: 'Oct–Dec' };
+
+function getQuarterKey(dateStr) {
+  if (!dateStr) return null;
+  const month = parseInt(dateStr.slice(5, 7));
+  const year = dateStr.slice(0, 4);
+  const q = month <= 3 ? 'Q1' : month <= 6 ? 'Q2' : month <= 9 ? 'Q3' : 'Q4';
+  return `${year}-${q}`;
+}
+
+function quarterLabel(key) {
+  const [year, q] = key.split('-');
+  return `${QUARTER_LABELS[q]} ${year}`;
+}
+
+function selectSeason(key) {
+  selectedSeason = key;
+  render();
+}
+
+function renderSeasonTabs() {
+  const bar = document.getElementById('season-tab-bar');
+  if (!bar) return;
+  const keys = [...new Set(allEntries.map(e => getQuarterKey(e.date)).filter(Boolean))].sort().reverse();
+  if (keys.length <= 1) { bar.innerHTML = ''; return; }
+  const allBtn = `<button class="season-tab-pill${selectedSeason === 'all' ? ' active' : ''}" onclick="selectSeason('all')">All</button>`;
+  const qBtns = keys.map(k =>
+    `<button class="season-tab-pill${selectedSeason === k ? ' active' : ''}" onclick="selectSeason('${k}')">${quarterLabel(k)}</button>`
+  ).join('');
+  bar.innerHTML = `<span class="season-tab-bar-label">Season</span>${qBtns}${allBtn}`;
+}
 
 // ── Modal ─────────────────────────────────────────────────────────
 let rowCount = 0;
@@ -1126,6 +1217,10 @@ async function fetchAll() {
     const res = await fetch(`${CSV_URL}&t=${Date.now()}`);
     const csv = await res.text();
     allEntries = parseSheetCSV(csv);
+    if (!defaultSeasonSet) {
+      const keys = [...new Set(allEntries.map(e => getQuarterKey(e.date)).filter(Boolean))].sort();
+      if (keys.length > 0) { selectedSeason = keys[keys.length - 1]; defaultSeasonSet = true; }
+    }
   } catch (err) {
     console.error('Failed to load sheet data:', err);
   }
@@ -1168,7 +1263,11 @@ function aggregate(entries) {
 
 // ── Render ────────────────────────────────────────────────────────
 function render() {
-  const players = aggregate(allEntries);
+  const filteredEntries = selectedSeason === 'all'
+    ? allEntries
+    : allEntries.filter(e => getQuarterKey(e.date) === selectedSeason);
+
+  const players = aggregate(filteredEntries);
   // Sort by total score descending
   players.sort((a, b) => b.total - a.total);
 
@@ -1176,13 +1275,12 @@ function render() {
   const playerMap = {};
   players.forEach((p, i) => { playerMap[p.name] = { ...p, rank: i + 1 }; });
 
-  // Season label (most recent year)
-  const years = allEntries.map(e => e.date ? e.date.slice(0, 4) : '').filter(Boolean);
-  const season = years.length ? Math.max(...years.map(Number)) : new Date().getFullYear();
+  // Season label
+  const season = selectedSeason === 'all' ? 'All Seasons' : quarterLabel(selectedSeason);
 
   // Build sessions: one entry per unique sheet row (sessionId), sorted by date
   const sessionMap = {};
-  for (const e of allEntries) {
+  for (const e of filteredEntries) {
     if (!sessionMap[e.sessionId]) sessionMap[e.sessionId] = { date: e.date, sessionId: e.sessionId };
   }
   const sessions = Object.values(sessionMap).sort((a, b) =>
@@ -1191,7 +1289,7 @@ function render() {
 
   // Build lookup: sessionId → name → entries[]
   const lookup = {};
-  for (const e of allEntries) {
+  for (const e of filteredEntries) {
     if (!lookup[e.sessionId]) lookup[e.sessionId] = {};
     if (!lookup[e.sessionId][e.name]) lookup[e.sessionId][e.name] = [];
     lookup[e.sessionId][e.name].push(e);
@@ -1310,6 +1408,9 @@ function render() {
 
   // Show scroll hint if many players
   document.getElementById('scroll-hint').style.display = names.length > 8 ? '' : 'none';
+
+  renderSeasonTabs();
+  if (document.getElementById('panel-trends').classList.contains('active')) renderTrends();
 }
 
 // ── Settlement ────────────────────────────────────────────────────
@@ -1414,12 +1515,135 @@ document.getElementById('add-form').addEventListener('submit', async e => {
   }
 });
 
+// ── Trends chart ──────────────────────────────────────────────────
+let trendsChart = null;
+
+const PLAYER_COLORS = [
+  '#FF4D4D', // red
+  '#4D94FF', // blue
+  '#33CC66', // green
+  '#FFB733', // amber
+  '#CC44FF', // violet
+  '#00CCDD', // cyan
+  '#FF44BB', // hot pink
+  '#FF7733', // orange
+  '#99DD00', // lime
+  '#00BBAA', // teal
+  '#7766FF', // indigo
+  '#FF6699', // rose
+];
+
+function renderTrends() {
+  const entries = selectedSeason === 'all'
+    ? allEntries
+    : allEntries.filter(e => getQuarterKey(e.date) === selectedSeason);
+
+  // All unique dates sorted
+  const dates = [...new Set(entries.map(e => e.date).filter(Boolean))].sort();
+  // All unique players — only those with >5 games, sorted by total desc
+  const playerTotals = {};
+  const playerGames = {};
+  for (const e of entries) {
+    playerTotals[e.name] = (playerTotals[e.name] || 0) + e.score;
+    playerGames[e.name] = (playerGames[e.name] || 0) + 1;
+  }
+  const players = Object.keys(playerTotals)
+    .filter(name => playerGames[name] > 5)
+    .sort((a, b) => playerTotals[b] - playerTotals[a]);
+
+  const datasets = players.map((name, i) => {
+    const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
+    const data = dates.map(d => {
+      const dayEntries = entries.filter(e => e.name === name && e.date === d);
+      if (!dayEntries.length) return null;
+      return dayEntries.reduce((s, e) => s + e.score, 0);
+    });
+    return {
+      label: name,
+      data,
+      borderColor: color,
+      backgroundColor: color + '22',
+      borderWidth: 2.5,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: color,
+      tension: 0.3,
+      spanGaps: true,
+    };
+  });
+
+  const ctx = document.getElementById('trends-canvas');
+  if (!ctx) return;
+  if (trendsChart) { trendsChart.destroy(); trendsChart = null; }
+
+  trendsChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates.map(fmtDate), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'circle',
+            padding: 20,
+            color: '#bbb',
+            font: { family: "'Inter', system-ui, sans-serif", size: 12, weight: '700' },
+          },
+        },
+        tooltip: {
+          backgroundColor: '#111',
+          titleColor: '#aaa',
+          bodyColor: '#fff',
+          borderColor: '#333',
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (v === null || v === undefined) return null;
+              return `  ${ctx.dataset.label}: ${v > 0 ? '+' : ''}${v}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          border: { color: '#333' },
+        },
+        y: {
+          ticks: {
+            color: '#888',
+            font: { size: 11 },
+            callback: v => (v > 0 ? '+' : '') + v,
+          },
+          grid: {
+            color: ctx => ctx.tick.value === 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.06)',
+            lineWidth: ctx => ctx.tick.value === 0 ? 2 : 1,
+          },
+          border: { color: '#333' },
+          afterDataLimits: axis => {
+            // always show zero line
+            axis.min = Math.min(axis.min, 0);
+            axis.max = Math.max(axis.max, 0);
+          },
+        },
+      },
+    },
+  });
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────
 function switchTab(name) {
-  ['leaderboard', 'rules'].forEach(t => {
+  ['leaderboard', 'trends', 'rules'].forEach(t => {
     document.getElementById(`panel-${t}`).classList.toggle('active', t === name);
     document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
   });
+  if (name === 'trends') renderTrends();
 }
 
 // ── Init ──────────────────────────────────────────────────────────
